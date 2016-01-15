@@ -49,7 +49,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>F:\php5.4\php-5.4.35-src;F:\php5.4\php-5.4.35-src\main;F:\php5.4\php-5.4.35-src\TSRM;F:\php5.4\php-5.4.35-src\Zend;F:\php5.4\php-5.4.35-src\ext\my_yii;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>F:\php5.4\php-5.4.35-src;F:\php5.4\php-5.4.35-src\main;F:\php5.4\php-5.4.35-src\TSRM;F:\php5.4\php-5.4.35-src\Zend;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX86</TargetMachine>
