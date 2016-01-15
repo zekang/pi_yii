@@ -3,6 +3,8 @@
 #include "base\exception.h"
 #include "common.h"
 
+/** {{{ char * yii_strtolower(char *str)
+*/
 char * yii_strtolower(char *str)
 {
 	char *p = str;
@@ -14,7 +16,11 @@ char * yii_strtolower(char *str)
 	}
 	return p;
 }
+/**}}}*/
 
+
+/** {{{ zend_class_entry *yii_get_class_entry(char *class_name, int len TSRMLS_DC)
+*/
 zend_class_entry *yii_get_class_entry(char *class_name, int len TSRMLS_DC)
 {
 	zend_class_entry **pce;
@@ -23,7 +29,10 @@ zend_class_entry *yii_get_class_entry(char *class_name, int len TSRMLS_DC)
 	}
 	return NULL;
 }
+/**}}}*/
 
+/** {{{ zend_bool yii_method_exists(zval *object, char *method_name, uint method_len TSRMLS_DC)
+*/
 zend_bool yii_method_exists(zval *object, char *method_name, uint method_len TSRMLS_DC)
 {
 	zend_class_entry *ce=NULL;
@@ -43,7 +52,10 @@ zend_bool yii_method_exists(zval *object, char *method_name, uint method_len TSR
 	}
 	return FAILURE;
 }
+/*}}}*/
 
+/** {{{ zend_bool yii_property_exists(zval *object, char *propery_name, uint propery_name_len TSRMLS_DC)
+*/
 zend_bool yii_property_exists(zval *object, char *propery_name, uint propery_name_len TSRMLS_DC)
 {
 	zend_class_entry *ce = NULL;
@@ -69,6 +81,10 @@ zend_bool yii_property_exists(zval *object, char *propery_name, uint propery_nam
 	return FAILURE;
 }
 
+/* }}} */
+
+/** {{{ void  yii_throw_exception(long code, char *message TSRMLS_DC) 
+*/
 void yii_throw_exception(long code, char *message TSRMLS_DC) 
 {
 	zend_class_entry *base_exception = yii_base_exception_ce;
@@ -78,3 +94,71 @@ void yii_throw_exception(long code, char *message TSRMLS_DC)
 	}
 	zend_throw_exception(base_exception, message, code TSRMLS_CC);
 }
+/* }}} */
+
+
+
+/** {{{ zval * yii_request_query(uint type, char * name, uint len TSRMLS_DC)
+*/
+zval * yii_request_query(uint type, char * name, uint len TSRMLS_DC)
+{
+	zval 		**carrier = NULL, **ret;
+
+#if (PHP_MAJOR_VERSION == 5) && (PHP_MINOR_VERSION < 4)
+	zend_bool 	jit_initialization = (PG(auto_globals_jit) && !PG(register_globals) && !PG(register_long_arrays));
+#else
+	zend_bool 	jit_initialization = PG(auto_globals_jit);
+#endif
+
+	switch (type) {
+	case TRACK_VARS_POST:
+	case TRACK_VARS_GET:
+	case TRACK_VARS_FILES:
+	case TRACK_VARS_COOKIE:
+		carrier = &PG(http_globals)[type];
+		break;
+	case TRACK_VARS_ENV:
+		if (jit_initialization) {
+			zend_is_auto_global(ZEND_STRL("_ENV") TSRMLS_CC);
+		}
+		carrier = &PG(http_globals)[type];
+		break;
+	case TRACK_VARS_SERVER:
+		if (jit_initialization) {
+			zend_is_auto_global(ZEND_STRL("_SERVER") TSRMLS_CC);
+		}
+		carrier = &PG(http_globals)[type];
+		break;
+	case TRACK_VARS_REQUEST:
+		if (jit_initialization) {
+			zend_is_auto_global(ZEND_STRL("_REQUEST") TSRMLS_CC);
+		}
+		(void)zend_hash_find(&EG(symbol_table), ZEND_STRS("_REQUEST"), (void **)&carrier);
+		break;
+	default:
+		break;
+	}
+
+	if (!carrier || !(*carrier)) {
+		zval *empty;
+		MAKE_STD_ZVAL(empty);
+		ZVAL_NULL(empty);
+		return empty;
+	}
+
+	if (!len) {
+		Z_ADDREF_P(*carrier);
+		return *carrier;
+	}
+
+	if (zend_hash_find(Z_ARRVAL_PP(carrier), name, len + 1, (void **)&ret) == FAILURE) {
+		zval *empty;
+		MAKE_STD_ZVAL(empty);
+		ZVAL_NULL(empty);
+		return empty;
+	}
+
+	Z_ADDREF_P(*ret);
+	return *ret;
+}
+/* }}} */

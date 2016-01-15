@@ -41,8 +41,9 @@
 
 
 /* If you declare any globals in php_my_yii.h uncomment this:
-ZEND_DECLARE_MODULE_GLOBALS(my_yii)
 */
+ZEND_DECLARE_MODULE_GLOBALS(my_yii)
+
 
 /* True global resources - no need for thread safety here */
 static int le_my_yii;
@@ -58,49 +59,34 @@ const zend_function_entry my_yii_functions[] = {
 };
 /* }}} */
 
-/* {{{ my_yii_module_entry
- */
-zend_module_entry my_yii_module_entry = {
-#if ZEND_MODULE_API_NO >= 20010901
-	STANDARD_MODULE_HEADER,
-#endif
-	"my_yii",
-	my_yii_functions,
-	PHP_MINIT(my_yii),
-	PHP_MSHUTDOWN(my_yii),
-	PHP_RINIT(my_yii),		/* Replace with NULL if there's nothing to do at request start */
-	PHP_RSHUTDOWN(my_yii),	/* Replace with NULL if there's nothing to do at request end */
-	PHP_MINFO(my_yii),
-#if ZEND_MODULE_API_NO >= 20010901
-	PHP_MY_YII_VERSION,
-#endif
-	STANDARD_MODULE_PROPERTIES
-};
-/* }}} */
-
-#ifdef COMPILE_DL_MY_YII
-ZEND_GET_MODULE(my_yii)
-#endif
 
 /* {{{ PHP_INI
  */
 /* Remove comments and fill if you need to have entries in php.ini
-PHP_INI_BEGIN()
-    STD_PHP_INI_ENTRY("my_yii.global_value",      "42", PHP_INI_ALL, OnUpdateLong, global_value, zend_my_yii_globals, my_yii_globals)
-    STD_PHP_INI_ENTRY("my_yii.global_string", "foobar", PHP_INI_ALL, OnUpdateString, global_string, zend_my_yii_globals, my_yii_globals)
-PHP_INI_END()
 */
+PHP_INI_BEGIN()
+    STD_PHP_INI_ENTRY("my_yii.yii_path", "", PHP_INI_ALL, OnUpdateString, yii_path, zend_my_yii_globals, my_yii_globals)
+PHP_INI_END()
+
 /* }}} */
 
 /* {{{ php_my_yii_init_globals
  */
 /* Uncomment this function if you have INI entries
+*/
 static void php_my_yii_init_globals(zend_my_yii_globals *my_yii_globals)
 {
-	my_yii_globals->global_value = 0;
-	my_yii_globals->global_string = NULL;
+	my_yii_globals->yii_path = NULL;
 }
+
+/* }}} */
+
+/** {{{ PHP_GINIT_FUNCTION
 */
+PHP_GINIT_FUNCTION(my_yii)
+{
+	MY_YII_G(yii_path) = NULL;
+}
 /* }}} */
 
 /* {{{ PHP_MINIT_FUNCTION
@@ -108,8 +94,9 @@ static void php_my_yii_init_globals(zend_my_yii_globals *my_yii_globals)
 PHP_MINIT_FUNCTION(my_yii)
 {
 	/* If you have INI entries, uncomment these lines 
-	REGISTER_INI_ENTRIES();
 	*/
+	REGISTER_INI_ENTRIES();
+	
 	EXT_STARTUP(yii_baseyii);
 	EXT_STARTUP(yii);
 	EXT_STARTUP(yii_base_object);
@@ -147,6 +134,7 @@ PHP_MSHUTDOWN_FUNCTION(my_yii)
  */
 PHP_RINIT_FUNCTION(my_yii)
 {
+	YII_G(yii_path) = NULL;
 	return SUCCESS;
 }
 /* }}} */
@@ -156,6 +144,9 @@ PHP_RINIT_FUNCTION(my_yii)
  */
 PHP_RSHUTDOWN_FUNCTION(my_yii)
 {
+	if (YII_G(yii_path)){
+		efree(YII_G(yii_path));
+	}
 	return SUCCESS;
 }
 /* }}} */
@@ -173,6 +164,35 @@ PHP_MINFO_FUNCTION(my_yii)
 	*/
 }
 /* }}} */
+
+
+/* {{{ my_yii_module_entry
+*/
+zend_module_entry my_yii_module_entry = {
+#if ZEND_MODULE_API_NO >= 20010901
+	STANDARD_MODULE_HEADER,
+#endif
+	"my_yii",
+	my_yii_functions,
+	PHP_MINIT(my_yii),
+	PHP_MSHUTDOWN(my_yii),
+	PHP_RINIT(my_yii),		/* Replace with NULL if there's nothing to do at request start */
+	PHP_RSHUTDOWN(my_yii),	/* Replace with NULL if there's nothing to do at request end */
+	PHP_MINFO(my_yii),
+#if ZEND_MODULE_API_NO >= 20010901
+	PHP_MY_YII_VERSION,
+#endif
+	PHP_MODULE_GLOBALS(my_yii),
+	PHP_GINIT(my_yii),
+	NULL,
+	NULL,
+	STANDARD_MODULE_PROPERTIES_EX
+};
+/* }}} */
+
+#ifdef COMPILE_DL_MY_YII
+ZEND_GET_MODULE(my_yii)
+#endif
 
 zend_op *get_opcode(zend_op_array *op_array, uint offset)
 {

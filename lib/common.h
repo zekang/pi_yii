@@ -31,5 +31,6 @@ extern char *  yii_strtolower(char *str);
 extern zend_bool yii_method_exists(zval *object, char *method_name, uint method_len TSRMLS_DC);
 extern zend_bool yii_property_exists(zval *object, char *propery_name, uint propery_name_len TSRMLS_DC);
 extern zend_class_entry *yii_get_class_entry(char *class_name, int len TSRMLS_DC);
+extern zval * yii_request_query(uint type, char * name, uint len TSRMLS_DC);
 extern void   yii_throw_exception(long code, char *message TSRMLS_DC);
 #endif

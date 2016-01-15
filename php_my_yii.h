@@ -53,18 +53,17 @@ PHP_RINIT_FUNCTION(my_yii);
 PHP_RSHUTDOWN_FUNCTION(my_yii);
 PHP_MINFO_FUNCTION(my_yii);
 
-
 ZEND_FUNCTION(yii_test);
 
 /* 
   	Declare any global variables you may need between the BEGIN
 	and END macros here:     
-
-ZEND_BEGIN_MODULE_GLOBALS(my_yii)
-	long  global_value;
-	char *global_string;
-ZEND_END_MODULE_GLOBALS(my_yii)
 */
+ZEND_BEGIN_MODULE_GLOBALS(my_yii)
+	char *yii_path;
+ZEND_END_MODULE_GLOBALS(my_yii)
+
+extern ZEND_DECLARE_MODULE_GLOBALS(my_yii);
 
 /* In every utility function you add that needs to use variables 
    in php_my_yii_globals, call TSRMLS_FETCH(); after declaring other 
@@ -82,6 +81,7 @@ ZEND_END_MODULE_GLOBALS(my_yii)
 #define MY_YII_G(v) (my_yii_globals.v)
 #endif
 
+#define  YII_G(v) MY_YII_G(v)
 #endif	/* PHP_MY_YII_H */
 
 
