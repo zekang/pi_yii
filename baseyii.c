@@ -28,7 +28,7 @@
 #include "lib/common.h"
 #include "ext/standard/php_var.h"
 #include "ext/standard/php_string.h"
-
+#include "ext/standard/php_smart_str.h"
 
 zend_class_entry *yii_baseyii_ce;
 ZEND_BEGIN_ARG_INFO_EX(arginfo_configure, 0, 1, 2)
@@ -45,7 +45,92 @@ ZEND_ARG_INFO(0,alias)
 ZEND_ARG_INFO(0,throwException)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_getrootalias,0,0,1)
+ZEND_ARG_INFO(0,alias)
+ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_setalias,0,0,2)
+ZEND_ARG_INFO(0,alias)
+ZEND_ARG_INFO(0,path)
+ZEND_END_ARG_INFO()
+
+/** {{{ char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
+    mode = 0 alias
+	mode = 1 rootalis
+*/
+static char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
+{
+	zval *aliases = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), 1 TSRMLS_CC);
+	if (Z_TYPE_P(aliases) != IS_ARRAY){
+		yii_throw_exception(YII_EXCEPTION_BASE TSRMLS_CC,"Yii\\BaseYii::$aliases should be Array");
+		return NULL;
+	}
+	zend_bool find_alias = 0;
+	smart_str result = { 0 };
+	char *root = estrndup(alias, alias_len);
+	char *pos = strchr(root, '/');
+	if (pos){
+		*pos = '\0';
+	}
+	zval **alias_values;
+	if (zend_hash_find(Z_ARRVAL_P(aliases), root, strlen(root) + 1, (void **)&alias_values) == SUCCESS){
+		if (Z_TYPE_PP(alias_values) == IS_STRING){
+			if (mode == 0){
+				smart_str_appendl(&result, Z_STRVAL_PP(alias_values), Z_STRLEN_PP(alias_values));
+				if (pos){
+					smart_str_appendc(&result, '/');
+					smart_str_appends(&result, pos + 1);
+				}
+			}
+			else{
+				smart_str_appends(&result, root);
+			}
+			smart_str_0(&result);
+			find_alias = 1;
+		}
+		else if (Z_TYPE_PP(alias_values) == IS_ARRAY){
+			zval **tmp;
+			char *key;
+			int key_len;
+			ulong idx;
+			if (pos){
+				*pos = '/';
+			}
+			for (zend_hash_internal_pointer_reset(Z_ARRVAL_PP(alias_values));
+				!find_alias && zend_hash_has_more_elements(Z_ARRVAL_PP(alias_values)) == SUCCESS;
+				zend_hash_move_forward(Z_ARRVAL_PP(alias_values))
+				){
+				if (zend_hash_get_current_key_ex(Z_ARRVAL_PP(alias_values), &key, &key_len, &idx, 0, NULL) != HASH_KEY_IS_STRING){
+					continue;
+				}
+				if (key_len - 1 > alias_len){
+					continue;
+				}
+				if (!strncmp(root, key, key_len - 1)){
+					if (*(root + key_len - 1) == '\0' || *(root + key_len - 1) == '/'){
+						if (zend_hash_get_current_data(Z_ARRVAL_PP(alias_values), (void **)&tmp) == SUCCESS){
+							if (Z_TYPE_PP(tmp) == IS_STRING){
+								if (mode == 0){
+									smart_str_appendl(&result, Z_STRVAL_PP(tmp), Z_STRLEN_PP(tmp));
+									smart_str_appends(&result, root + key_len - 1);
+									smart_str_0(&result);
+								}
+								else{
+									smart_str_appendl(&result, key, key_len - 1);
+									smart_str_0(&result);
+								}
+								find_alias = 1;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	efree(root);
+	return find_alias ? result.c : NULL;
+}
+/** }}} */
 /** {{{ proto public static Yii_BaseYii::init()
 */
 ZEND_METHOD(Yii_BaseYii, init)
@@ -92,32 +177,44 @@ ZEND_METHOD(Yii_BaseYii, getAlias)
 	if (Z_TYPE_P(alias) != IS_STRING || strncmp(Z_STRVAL_P(alias), "@", 1)){
 		RETURN_ZVAL(alias, 1, 0);
 	}
-	zval *aliases = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), 1 TSRMLS_CC);
-	if (Z_TYPE_P(aliases) != IS_ARRAY){
-		yii_throw_exception(YII_EXCEPTION_BASE, "Yii\\BaseYii::$aliases should be Array" TSRMLS_CC);
-		RETURN_FALSE;
-	}
-	zend_bool find_alias = 0;
-	char *root = estrndup(Z_STRVAL_P(alias), Z_STRLEN_P(alias));
-	char *pos = strchr(root, '/');
-	if (pos){
-		*pos = '\0';
-	}
-	zval **alias_values;
-	if (zend_hash_find(Z_ARRVAL_P(aliases), root, strlen(root) + 1, (void **)&alias_values) == SUCCESS){
-		php_var_dump(alias_values, 1 TSRMLS_CC);
-		find_alias = 1;
-	}
-	efree(root);
-	if (find_alias){
-		RETURN_TRUE;
+
+	char *alias_value = yii_get_alias(Z_STRVAL_P(alias), Z_STRLEN_P(alias), 0 TSRMLS_CC);
+	if (alias_value){
+		RETURN_STRING(alias_value, 0);
 	}
 	if (throwException){
-		yii_throw_exception(YII_EXCEPTION_BASE, "Invalid path alias" TSRMLS_CC);
+		yii_throw_exception(YII_EXCEPTION_BASE TSRMLS_CC, "Invalid path alias:%s", Z_STRVAL_P(alias));
 	}
 	RETURN_FALSE;
 }
 /*}}}*/
+
+/** {{{ proto public static Yii_BaseYii::getRootAlias($alias)
+*/
+ZEND_METHOD(Yii_BaseYii, getRootAlias)
+{
+	zval *alias;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &alias) == FAILURE){
+		RETURN_FALSE;
+	}
+	if (Z_TYPE_P(alias) != IS_STRING){
+		RETURN_FALSE;
+	}
+	char *alias_value = yii_get_alias(Z_STRVAL_P(alias), Z_STRLEN_P(alias), 1 TSRMLS_CC);
+	if (alias_value){
+		RETURN_STRING(alias_value, 0);
+	}
+	RETURN_FALSE;
+}
+/*}}}*/
+
+/** {{{ proto public static function setAlias($alias, $path)
+*/
+ZEND_METHOD(Yii_BaseYii, setAlias)
+{
+
+}
+/** }}} */
 
 /** {{{ proto public static Yii_BaseYii::configure($object, $properties)
 */
@@ -156,6 +253,7 @@ zend_function_entry yii_baseyii_methods[] = {
 	ZEND_ME(Yii_BaseYii, init, arginfo_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(Yii_BaseYii, getVersion, arginfo_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(Yii_BaseYii, getAlias, arginfo_getalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(Yii_BaseYii, getRootAlias, arginfo_getrootalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
@@ -168,5 +266,6 @@ EXT_STARTUP_FUNCTION(yii_baseyii)
 	zend_declare_property_null(yii_baseyii_ce, ZEND_STRL("aliases"), ZEND_ACC_PUBLIC | ZEND_ACC_STATIC TSRMLS_CC);
 	zend_declare_property_null(yii_baseyii_ce, ZEND_STRL("app"), ZEND_ACC_PUBLIC | ZEND_ACC_STATIC TSRMLS_CC);
 	zend_declare_property_null(yii_baseyii_ce, ZEND_STRL("container"), ZEND_ACC_PUBLIC | ZEND_ACC_STATIC TSRMLS_CC);
+	zend_declare_property_null(yii_baseyii_ce, ZEND_STRL("_logger"), ZEND_ACC_PRIVATE | ZEND_ACC_STATIC TSRMLS_CC);
 	return SUCCESS;
 }

@@ -143,14 +143,11 @@ ZEND_METHOD(Yii_Base_Object, __get)
 	}
 	else{
 		method[0] = 's';
-		char message[MAX_PATH] = { 0 };
 		if (yii_method_exists(getThis(), method, method_len + 1 TSRMLS_CC) == SUCCESS){
-			php_sprintf(message, "Getting write-only property: %s::%s", EG(called_scope)->name, name);
-			yii_throw_exception(YII_BASE_INVALID_CALL_EXCEPTION, message TSRMLS_CC);
+			yii_throw_exception(YII_BASE_INVALID_CALL_EXCEPTION TSRMLS_CC, "Getting write-only property: %s::%s", EG(called_scope)->name, name);
 		}
 		else{
-			php_sprintf(message, "Getting unknown property: %s::%s", EG(called_scope)->name, name);
-			yii_throw_exception(YII_BASE_UNKNOWN_PROPERTY_EXCEPTION, message TSRMLS_CC);
+			yii_throw_exception(YII_BASE_UNKNOWN_PROPERTY_EXCEPTION TSRMLS_CC, "Getting unknown property: %s::%s", EG(called_scope)->name, name);
 		}
 	}
 }
@@ -179,14 +176,11 @@ ZEND_METHOD(Yii_Base_Object, __set)
 	}
 	else{
 		method[0] = 'g';
-		char message[MAX_PATH] = { 0 };
 		if (yii_method_exists(getThis(), method, method_len + 1 TSRMLS_CC) == SUCCESS){
-			php_sprintf(message, "Setting read-only property: %s::%s", EG(called_scope)->name, name);
-			yii_throw_exception(YII_BASE_INVALID_CALL_EXCEPTION, message TSRMLS_CC);
+			yii_throw_exception(YII_BASE_INVALID_CALL_EXCEPTION TSRMLS_CC, "Setting read-only property: %s::%s", EG(called_scope)->name, name);
 		}
 		else{
-			php_sprintf(message, "Setting unknown property: %s::%s", EG(called_scope)->name, name);
-			yii_throw_exception(YII_BASE_UNKNOWN_PROPERTY_EXCEPTION, message TSRMLS_CC);
+			yii_throw_exception(YII_BASE_UNKNOWN_PROPERTY_EXCEPTION TSRMLS_CC, "Setting unknown property: %s::%s", EG(called_scope)->name, name);
 		}
 	}
 }
@@ -245,10 +239,8 @@ ZEND_METHOD(Yii_Base_Object,__unset)
 	}
 	else{
 		method[0] = 'g';
-		char message[MAX_PATH] = { 0 };
 		if (yii_method_exists(getThis(), method, method_len + 1 TSRMLS_CC) == SUCCESS){
-			php_sprintf(message, "Unsetting read-only property: %s::%s", EG(called_scope)->name, name);
-			yii_throw_exception(YII_BASE_INVALID_CALL_EXCEPTION, message TSRMLS_CC);
+			yii_throw_exception(YII_BASE_INVALID_CALL_EXCEPTION TSRMLS_CC, "Unsetting read-only property: %s::%s", EG(called_scope)->name, name);
 		}
 	}
 }
@@ -265,9 +257,8 @@ ZEND_METHOD(Yii_Base_Object, __call)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sz", &name, &name_len,&params) == FAILURE){
 		RETURN_FALSE;
 	}
-	char message[MAX_PATH] = { 0 };
-	php_sprintf(message, "Calling unknown method: %s::%s()", EG(called_scope)->name, name);
-	yii_throw_exception(YII_BASE_INVALID_CALL_EXCEPTION, message TSRMLS_CC);
+
+	yii_throw_exception(YII_BASE_INVALID_CALL_EXCEPTION TSRMLS_CC, "Calling unknown method: %s::%s()", EG(called_scope)->name, name);
 }
 /** }}} */
 

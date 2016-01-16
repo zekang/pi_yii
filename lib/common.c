@@ -3,6 +3,7 @@
 #include "base\exception.h"
 #include "common.h"
 
+
 /** {{{ char * yii_strtolower(char *str)
 */
 char * yii_strtolower(char *str)
@@ -83,16 +84,23 @@ zend_bool yii_property_exists(zval *object, char *propery_name, uint propery_nam
 
 /* }}} */
 
-/** {{{ void  yii_throw_exception(long code, char *message TSRMLS_DC) 
+
+/** {{{ void yii_throw_exception(long code TSRMLS_DC, char *msg,...) 
 */
-void yii_throw_exception(long code, char *message TSRMLS_DC) 
+void yii_throw_exception(long code TSRMLS_DC, const char *format, ...)
 {
+	char *message = NULL;
+	va_list ap;
 	zend_class_entry *base_exception = yii_base_exception_ce;
 	if ((code & YII_EXCEPTION_BASE) == YII_EXCEPTION_BASE
 		&& yii_buildin_exceptions[YII_EXCEPTION_OFFSET(code)]) {
 		base_exception = yii_buildin_exceptions[YII_EXCEPTION_OFFSET(code)];
 	}
+	va_start(ap, format);
+	vspprintf(&message, 0, format, ap);
+	va_end(ap);
 	zend_throw_exception(base_exception, message, code TSRMLS_CC);
+	efree(message);
 }
 /* }}} */
 
