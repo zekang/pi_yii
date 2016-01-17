@@ -85,7 +85,7 @@ zend_bool yii_property_exists(zval *object, char *propery_name, uint propery_nam
 /* }}} */
 
 
-/** {{{ void yii_throw_exception(long code TSRMLS_DC, char *msg,...) 
+/** {{{ void yii_throw_exception(long code TSRMLS_DC, char *format,...) 
 */
 void yii_throw_exception(long code TSRMLS_DC, const char *format, ...)
 {
