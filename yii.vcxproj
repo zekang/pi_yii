@@ -78,6 +78,7 @@
     <ClCompile Include="base\exception.c" />
     <ClCompile Include="base\invalid_call_exception.c" />
     <ClCompile Include="base\invalid_config_exception.c" />
+    <ClCompile Include="base\invalid_param_exception.c" />
     <ClCompile Include="base\object.c" />
     <ClCompile Include="base\unknown_method_exception.c" />
     <ClCompile Include="base\unknown_property_exception.c" />
@@ -91,6 +92,7 @@
     <ClInclude Include="base\exception.h" />
     <ClInclude Include="base\invalid_call_exception.h" />
     <ClInclude Include="base\invalid_config_exception.h" />
+    <ClInclude Include="base\invalid_param_exception.h" />
     <ClInclude Include="base\object.h" />
     <ClInclude Include="base\unknown_method_exception.h" />
     <ClInclude Include="base\unknown_property_exception.h" />

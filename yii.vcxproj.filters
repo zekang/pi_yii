@@ -48,6 +48,9 @@
     <ClCompile Include="lib\common.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="base\invalid_param_exception.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="php_my_yii.h">
@@ -81,6 +84,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="lib\common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="base\invalid_param_exception.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

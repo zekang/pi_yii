@@ -24,6 +24,7 @@ extern zend_class_entry *yii_buildin_exceptions[];
 #define YII_BASE_INVALID_CONFIG_EXCEPTION   515
 #define YII_BASE_UNKNOWN_METHOD_EXCEPTION   516
 #define YII_BASE_UNKNOWN_PROPERTY_EXCEPTION 517
+#define YII_BASE_INVALID_PARAM_EXCEPTION    518
 
 
 

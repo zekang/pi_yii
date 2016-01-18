@@ -54,7 +54,7 @@ ZEND_ARG_INFO(0,alias)
 ZEND_ARG_INFO(0,path)
 ZEND_END_ARG_INFO()
 
-/** {{{ char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
+/** {{{ static char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
     mode = 0 alias
 	mode = 1 rootalis
 */
@@ -62,7 +62,7 @@ static char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
 {
 	zval *aliases = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), 1 TSRMLS_CC);
 	if (Z_TYPE_P(aliases) != IS_ARRAY){
-		yii_throw_exception(YII_EXCEPTION_BASE TSRMLS_CC,"Yii\\BaseYii::$aliases should be Array");
+		yii_throw_exception(YII_BASE_INVALID_PARAM_EXCEPTION TSRMLS_CC,"Yii\\BaseYii::$aliases should be Array");
 		return NULL;
 	}
 	zend_bool find_alias = 0;
@@ -131,6 +131,132 @@ static char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
 	return find_alias ? result.c : NULL;
 }
 /** }}} */
+
+
+/** {{{ static zend_bool yii_set_alias(char *alias,int alias_len,char *path,int path_len TSRMLS_DC)
+*/
+static zend_bool yii_set_alias(char *alias, int alias_len, char *path, int path_len TSRMLS_DC)
+{
+	zval *aliases = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), 1 TSRMLS_CC);
+	if (Z_TYPE_P(aliases) != IS_ARRAY){
+		yii_throw_exception(YII_BASE_INVALID_PARAM_EXCEPTION TSRMLS_CC, "Yii\\BaseYii::$aliases should be Array");
+		return FAILURE;
+	}
+	char *root = NULL,*pos = NULL,*alias_value = NULL;
+	if (*alias == '@'){
+		root = estrndup(alias, alias_len);
+	}
+	else{
+		root = emalloc(alias_len + 1);
+		*root = '@';
+		memcpy(root + 1, alias, alias_len);
+	}
+	pos = strchr(root, '/');
+	if (pos){
+		*pos = '\0';
+	}
+	alias_value = *path == '@' ?
+		yii_get_alias(path, path_len, 0 TSRMLS_CC) :
+		php_trim(path, path_len, ZEND_STRL("\\/"), NULL, 2 TSRMLS_CC);
+	if (!alias_value){
+		alias_value = estrdup("");
+	}
+
+	zval **alias_values;
+	if (zend_hash_find(Z_ARRVAL_P(aliases), root, strlen(root) + 1, (void **)&alias_values) == SUCCESS){
+		if (Z_TYPE_PP(alias_values) == IS_STRING) {
+			if (pos){
+				zval *array;
+				MAKE_STD_ZVAL(array);
+				array_init(array);
+				*pos = '/';
+				add_assoc_string(array, root, alias_value, 1);
+				*pos = '\0';
+				char *root_value = yii_get_alias(root, strlen(root), 0 TSRMLS_CC);
+				if (!root_value){
+					root_value = estrdup("");
+				}
+				add_assoc_string(array, root, root_value, 0);
+				add_assoc_zval(aliases, root, array);
+			}
+			else{
+				add_assoc_string(aliases, root, alias_value, 0);
+			}
+		}
+		else if (Z_TYPE_PP(alias_values) == IS_ARRAY){
+			if (pos){
+				*pos = '/';
+			}
+			add_assoc_string(*alias_values, root, alias_value, 0);
+		}
+	}
+	else{
+		if (pos){
+			zval *array;
+			MAKE_STD_ZVAL(array);
+			array_init(array);
+			*pos = '/';
+			add_assoc_string(array, root, alias_value, 0);
+			*pos = '\0';
+			add_assoc_zval(aliases, root, array);
+		}
+		else{
+			add_assoc_string(aliases, root, alias_value, 0);
+		}
+	}
+	efree(root);
+	zend_update_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), aliases TSRMLS_CC);
+	return SUCCESS;
+}
+/** }}} */
+
+
+/** {{{ static zend_bool yii_delete_alias(char *alias,int alias_len TSRMLS_DC)
+*/
+static zend_bool yii_delete_alias(char *alias, int alias_len TSRMLS_DC)
+{
+	zval *aliases = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), 1 TSRMLS_CC);
+	if (Z_TYPE_P(aliases) != IS_ARRAY){
+		yii_throw_exception(YII_BASE_INVALID_PARAM_EXCEPTION TSRMLS_CC, "Yii\\BaseYii::$aliases should be Array");
+		return FAILURE;
+	}
+	char *root = NULL, *pos = NULL;
+	if (*alias == '@'){
+		root = estrndup(alias, alias_len);
+	}
+	else{
+		root = emalloc(alias_len + 1);
+		*root = '@';
+		memcpy(root + 1, alias, alias_len);
+	}
+	pos = strchr(root, '/');
+	if (pos){
+		*pos = '\0';
+	}
+	zval **alias_values;
+	zend_bool change = 0;
+	if (zend_hash_find(Z_ARRVAL_P(aliases), root, strlen(root) + 1, (void **)&alias_values) == SUCCESS){
+		if (Z_TYPE_PP(alias_values) == IS_ARRAY){
+			if (pos){
+				*pos = '/';
+			}
+			zend_hash_del(Z_ARRVAL_PP(alias_values), root, strlen(root) + 1);
+			change = 1;
+		}
+		else if (Z_TYPE_PP(alias_values) == IS_STRING){
+			zend_hash_del(Z_ARRVAL_P(aliases), root, strlen(root) + 1);
+			change = 1;
+		}
+	}
+	efree(root);
+	if (change){
+		zend_update_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), aliases TSRMLS_CC);
+	}
+	return SUCCESS;
+}
+/** }}} */
+
+
 /** {{{ proto public static Yii_BaseYii::init()
 */
 ZEND_METHOD(Yii_BaseYii, init)
@@ -183,7 +309,7 @@ ZEND_METHOD(Yii_BaseYii, getAlias)
 		RETURN_STRING(alias_value, 0);
 	}
 	if (throwException){
-		yii_throw_exception(YII_EXCEPTION_BASE TSRMLS_CC, "Invalid path alias:%s", Z_STRVAL_P(alias));
+		yii_throw_exception(YII_BASE_INVALID_PARAM_EXCEPTION TSRMLS_CC, "Invalid path alias:%s", Z_STRVAL_P(alias));
 	}
 	RETURN_FALSE;
 }
@@ -212,7 +338,24 @@ ZEND_METHOD(Yii_BaseYii, getRootAlias)
 */
 ZEND_METHOD(Yii_BaseYii, setAlias)
 {
-
+	zval *alias, *path;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zz", &alias, &path) == FAILURE){
+		RETURN_FALSE;
+	}
+	if (Z_TYPE_P(alias) != IS_STRING){
+		yii_throw_exception(YII_BASE_INVALID_PARAM_EXCEPTION TSRMLS_CC, "BaseYii::setAlias alias parameter should be a string");
+		RETURN_FALSE;
+	}
+	if (Z_TYPE_P(path) == IS_STRING ){
+		yii_set_alias(Z_STRVAL_P(alias), Z_STRLEN_P(alias), Z_STRVAL_P(path), Z_STRLEN_P(path) TSRMLS_CC);
+		RETURN_TRUE;
+	}
+	if (Z_TYPE_P(path) == IS_NULL){
+		yii_delete_alias(Z_STRVAL_P(alias), Z_STRLEN_P(alias) TSRMLS_CC);
+		RETURN_TRUE;
+	}
+	yii_throw_exception(YII_BASE_INVALID_PARAM_EXCEPTION TSRMLS_CC, "BaseYii::setAlias path parameter should be a string or null");
+	RETURN_FALSE;
 }
 /** }}} */
 
@@ -254,6 +397,7 @@ zend_function_entry yii_baseyii_methods[] = {
 	ZEND_ME(Yii_BaseYii, getVersion, arginfo_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(Yii_BaseYii, getAlias, arginfo_getalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(Yii_BaseYii, getRootAlias, arginfo_getrootalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(Yii_BaseYii, setAlias, arginfo_setalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 

@@ -29,6 +29,7 @@
 #include "lib/common.h"
 #include "base\exception.h"
 #include "base\invalid_call_exception.h"
+#include "base\invalid_param_exception.h"
 #include "base\unknown_property_exception.h"
 #include "base\unknown_method_exception.h"
 #include "base\user_exception.h"
@@ -102,6 +103,7 @@ PHP_MINIT_FUNCTION(my_yii)
 	EXT_STARTUP(yii_base_object);
 	EXT_STARTUP(yii_base_exception);
 	EXT_STARTUP(yii_base_invalid_call_exception);
+	EXT_STARTUP(yii_base_invalid_param_exception);
 	EXT_STARTUP(yii_base_unknown_propery_exception);
 	EXT_STARTUP(yii_base_unknown_method_exception);
 	EXT_STARTUP(yii_base_user_exception);
@@ -113,7 +115,7 @@ PHP_MINIT_FUNCTION(my_yii)
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_INVALID_CONFIG_EXCEPTION)]		= yii_base_invalid_config_exception_ce;
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_UNKNOWN_METHOD_EXCEPTION)]		= yii_base_unknown_method_exception_ce;
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_UNKNOWN_PROPERTY_EXCEPTION)]	= yii_base_unknown_propery_exception_ce;
-
+	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_INVALID_PARAM_EXCEPTION)]		= yii_base_invalid_param_exception_ce;
 	return SUCCESS;
 }
 /* }}} */
