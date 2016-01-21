@@ -54,6 +54,7 @@ ZEND_ARG_INFO(0,alias)
 ZEND_ARG_INFO(0,path)
 ZEND_END_ARG_INFO()
 
+
 /** {{{ static char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
     mode = 0 alias
 	mode = 1 rootalis
@@ -358,6 +359,8 @@ ZEND_METHOD(Yii_BaseYii, setAlias)
 	RETURN_FALSE;
 }
 /** }}} */
+
+
 
 /** {{{ proto public static Yii_BaseYii::configure($object, $properties)
 */

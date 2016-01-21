@@ -37,7 +37,7 @@
 #include "baseyii.h"
 #include "yii.h"
 #include "base/object.h"
-
+#include "ext/standard/php_var.h"
 
 
 
@@ -245,6 +245,24 @@ ZEND_FUNCTION(yii_test)
 		}
 		
 	}
-
-	
+	zval *val=NULL;
+	/*
+	HashTable *call_symbol_table = NULL;
+	if (EG(active_symbol_table)){
+		call_symbol_table = EG(active_symbol_table);
+	}
+	ALLOC_HASHTABLE(EG(active_symbol_table));
+	zend_hash_init(EG(active_symbol_table), 8, NULL, ZVAL_PTR_DTOR, 0);
+	*/
+	yii_include("index.php", NULL TSRMLS_CC);
+	if (val){
+		php_var_dump(&val, 1 TSRMLS_CC);
+	}
+	/*
+	if (call_symbol_table){
+		zend_hash_destroy(EG(active_symbol_table));
+		FREE_HASHTABLE(EG(active_symbol_table));
+		EG(active_symbol_table) = call_symbol_table;
+	}
+	*/
 }
