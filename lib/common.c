@@ -298,3 +298,92 @@ zend_bool yii_include(char *path, zval **return_value TSRMLS_DC)
 	return SUCCESS;
 }
 /* }}} */
+
+
+void(*old_execute)(zend_op_array *op_array TSRMLS_DC);
+
+void yii_execute(zend_op_array *op_array TSRMLS_DC)
+{
+	php_printf("<br>\nstart execute ");
+	if (op_array->function_name){
+		php_printf(":");
+		if (op_array->scope){
+			php_printf("%s::", op_array->scope->name);
+		}
+		php_printf("%s in %s %d-%d", op_array->function_name,op_array->filename,op_array->line_start,op_array->line_end);
+	}
+	
+	php_printf("<br/>\n");
+	
+	old_execute(op_array TSRMLS_CC);
+}
+
+
+void(*old_error_cb)(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
+
+/**{{{ yii_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
+*/
+void yii_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
+{
+	TSRMLS_FETCH();
+	char *msg;
+	va_list ap;
+	va_copy(ap, args);
+	vspprintf(&msg, 0, format, ap);
+	va_end(ap);
+	php_printf("error found:%s\n", msg);
+	efree(msg);
+	old_error_cb(type, error_filename, error_lineno, format, args);
+}
+/* }}} */
+
+void(*old_throw_exception_hook)(zval *exception TSRMLS_DC);
+
+
+/**{{{ void yii_throw_exception_hook(zval *exception TSRMLS_DC)
+*/
+void yii_throw_exception_hook(zval *exception TSRMLS_DC)
+{
+	if (!exception){
+		return;
+	}
+	php_printf("exception occur\n");
+	if (old_throw_exception_hook){
+		php_printf("next \n");
+		old_throw_exception_hook(exception TSRMLS_CC);
+	}
+}
+/* }}} */
+
+
+/**{{{ void yii_init_error_hooks(TSRMLS_D)
+*/
+void yii_init_error_hooks(TSRMLS_D)
+{
+	old_execute = zend_execute;
+	zend_execute = yii_execute;
+	old_error_cb  = zend_error_cb;
+	zend_error_cb = yii_error_cb;
+	if (zend_throw_exception_hook) {
+		old_throw_exception_hook = zend_throw_exception_hook;
+	}
+	zend_throw_exception_hook = yii_throw_exception_hook;
+}
+/* }}} */
+
+/**{{{ void yii_recovery_error_hooks(TSRMLS_D)
+*/
+void yii_recovery_error_hooks(TSRMLS_D)
+{
+	if (old_execute){
+		zend_execute = old_execute;
+	}
+	if (old_error_cb) {
+		zend_error_cb = old_error_cb;
+	}
+	if (old_throw_exception_hook) {
+		zend_throw_exception_hook = old_throw_exception_hook;
+	}
+	
+}
+/* }}} */

@@ -38,6 +38,8 @@
 #include "yii.h"
 #include "base/object.h"
 #include "ext/standard/php_var.h"
+#include "ext/date/php_date.h"
+
 
 
 
@@ -67,6 +69,7 @@ const zend_function_entry my_yii_functions[] = {
 */
 PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY("my_yii.yii_path", "", PHP_INI_ALL, OnUpdateString, yii_path, zend_my_yii_globals, my_yii_globals)
+	STD_PHP_INI_BOOLEAN("my_yii.track_error",0,PHP_INI_ALL,OnUpdateBool,track_error,zend_my_yii_globals,my_yii_globals)
 PHP_INI_END()
 
 /* }}} */
@@ -78,6 +81,7 @@ PHP_INI_END()
 static void php_my_yii_init_globals(zend_my_yii_globals *my_yii_globals)
 {
 	my_yii_globals->yii_path = NULL;
+	my_yii_globals->track_error = 0;
 }
 
 /* }}} */
@@ -116,6 +120,9 @@ PHP_MINIT_FUNCTION(my_yii)
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_UNKNOWN_METHOD_EXCEPTION)]		= yii_base_unknown_method_exception_ce;
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_UNKNOWN_PROPERTY_EXCEPTION)]	= yii_base_unknown_propery_exception_ce;
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_INVALID_PARAM_EXCEPTION)]		= yii_base_invalid_param_exception_ce;
+	if (YII_G(track_error)){
+		yii_init_error_hooks(TSRMLS_C);
+	}
 	return SUCCESS;
 }
 /* }}} */
@@ -125,8 +132,12 @@ PHP_MINIT_FUNCTION(my_yii)
 PHP_MSHUTDOWN_FUNCTION(my_yii)
 {
 	/* uncomment this line if you have INI entries
-	UNREGISTER_INI_ENTRIES();
 	*/
+	if (YII_G(track_error)){
+		yii_recovery_error_hooks(TSRMLS_C);
+	}
+	UNREGISTER_INI_ENTRIES();
+	
 	return SUCCESS;
 }
 /* }}} */
@@ -246,6 +257,7 @@ ZEND_FUNCTION(yii_test)
 		
 	}
 	zval *val=NULL;
+	
 	/*
 	HashTable *call_symbol_table = NULL;
 	if (EG(active_symbol_table)){
@@ -258,6 +270,7 @@ ZEND_FUNCTION(yii_test)
 	if (val){
 		php_var_dump(&val, 1 TSRMLS_CC);
 	}
+	
 	/*
 	if (call_symbol_table){
 		zend_hash_destroy(EG(active_symbol_table));

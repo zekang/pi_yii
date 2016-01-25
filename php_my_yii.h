@@ -61,6 +61,7 @@ ZEND_FUNCTION(yii_test);
 */
 ZEND_BEGIN_MODULE_GLOBALS(my_yii)
 	char *yii_path;
+	zend_bool track_error;
 ZEND_END_MODULE_GLOBALS(my_yii)
 
 extern ZEND_DECLARE_MODULE_GLOBALS(my_yii);

@@ -49,4 +49,12 @@ extern void yii_throw_exception(long code TSRMLS_DC, const char *format, ...);
 extern zend_bool yii_php_valid_var_name(char *var_name, int var_name_len);
 extern zend_bool yii_include(char *path, zval **return_value TSRMLS_DC);
 extern zend_bool yii_extract(zval *params TSRMLS_DC);
+extern void(*old_execute)(zend_op_array *op_array TSRMLS_DC);
+extern void yii_execute(zend_op_array *op_array TSRMLS_DC);
+extern void(*old_error_cb)(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
+extern void yii_error_cb  (int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
+extern void(*old_throw_exception_hook)(zval *exception TSRMLS_DC);
+extern void yii_throw_exception_hook  (zval *exception TSRMLS_DC);
+extern void yii_init_error_hooks(TSRMLS_D);
+extern void yii_recovery_error_hooks(TSRMLS_D);
 #endif
