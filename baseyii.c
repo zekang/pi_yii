@@ -29,6 +29,7 @@
 #include "ext/standard/php_var.h"
 #include "ext/standard/php_string.h"
 #include "ext/standard/php_smart_str.h"
+#include "ext/standard/php_filestat.h"
 
 zend_class_entry *yii_baseyii_ce;
 ZEND_BEGIN_ARG_INFO_EX(arginfo_configure, 0, 1, 2)
@@ -55,11 +56,17 @@ ZEND_ARG_INFO(0,path)
 ZEND_END_ARG_INFO()
 
 
-/** {{{ static char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_autoload,0,0,1)
+ZEND_ARG_INFO(0,className)
+ZEND_END_ARG_INFO()
+
+
+
+/** {{{ static char * yii_get_alias(const char *alias,int alias_len,int mode TSRMLS_DC)
     mode = 0 alias
 	mode = 1 rootalis
 */
-static char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
+static char * yii_get_alias(const char *alias, int alias_len, int mode TSRMLS_DC)
 {
 	zval *aliases = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), 1 TSRMLS_CC);
 	if (Z_TYPE_P(aliases) != IS_ARRAY){
@@ -136,7 +143,7 @@ static char * yii_get_alias(char *alias,int alias_len,int mode TSRMLS_DC)
 
 /** {{{ static zend_bool yii_set_alias(char *alias,int alias_len,char *path,int path_len TSRMLS_DC)
 */
-static zend_bool yii_set_alias(char *alias, int alias_len, char *path, int path_len TSRMLS_DC)
+static zend_bool yii_set_alias(const char *alias, int alias_len, char *path, int path_len TSRMLS_DC)
 {
 	zval *aliases = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), 1 TSRMLS_CC);
 	if (Z_TYPE_P(aliases) != IS_ARRAY){
@@ -212,9 +219,9 @@ static zend_bool yii_set_alias(char *alias, int alias_len, char *path, int path_
 /** }}} */
 
 
-/** {{{ static zend_bool yii_delete_alias(char *alias,int alias_len TSRMLS_DC)
+/** {{{ static zend_bool yii_delete_alias(const char *alias,int alias_len TSRMLS_DC)
 */
-static zend_bool yii_delete_alias(char *alias, int alias_len TSRMLS_DC)
+static zend_bool yii_delete_alias(const char *alias, int alias_len TSRMLS_DC)
 {
 	zval *aliases = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), 1 TSRMLS_CC);
 	if (Z_TYPE_P(aliases) != IS_ARRAY){
@@ -257,6 +264,37 @@ static zend_bool yii_delete_alias(char *alias, int alias_len TSRMLS_DC)
 }
 /** }}} */
 
+/** {{{ zend_bool yii_register_autoload(TSRMLS_D) */
+zend_bool yii_register_autoload(TSRMLS_D)
+{
+	zend_fcall_info fci;
+	zval function;
+	zval *autoload,*ret;
+	zval **params[1] = { &autoload };
+	INIT_PZVAL(&function);
+	ZVAL_STRING(&function, "spl_autoload_register", 0);
+	zend_bool result;
+	MAKE_STD_ZVAL(autoload);
+	array_init(autoload);
+	add_next_index_string(autoload, "Yii\\BaseYii", 1);
+	add_next_index_string(autoload, "autoload", 1);
+	fci.function_name  = &function;
+	fci.function_table = EG(function_table);
+	fci.no_separation  = 1;
+	fci.size = sizeof(fci);
+	fci.object_ptr = NULL;
+	fci.param_count = 1;
+	fci.params = (zval ***)&params;
+	fci.symbol_table = NULL;
+	fci.retval_ptr_ptr = &ret;
+	result =  zend_call_function(&fci, NULL TSRMLS_CC);
+	if (ret){
+		zval_ptr_dtor(&ret);
+	}
+	zval_ptr_dtor(&autoload);
+	return result;
+}
+/**/
 
 /** {{{ proto public static Yii_BaseYii::init()
 */
@@ -281,6 +319,7 @@ ZEND_METHOD(Yii_BaseYii, init)
 		add_assoc_string(aliases, "@yii", YII_G(yii_path), 1);
 		zend_update_static_property(yii_baseyii_ce, ZEND_STRL("aliases"), aliases TSRMLS_CC);
 	}
+	yii_register_autoload(TSRMLS_C);
 }
 /*}}}*/
 
@@ -392,6 +431,63 @@ ZEND_METHOD(Yii_BaseYii, configure)
 /*}}}*/
 
 
+/** {{{ proto public static function autoload($className)
+*/
+ZEND_METHOD(Yii_BaseYii, autoload)
+{
+	char *classname;
+	int classname_len;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &classname, &classname_len) == FAILURE){
+		RETURN_FALSE;
+	}
+	zval *classmap = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("classMap"), 1 TSRMLS_CC);
+	char *classpath = NULL;
+	zend_bool usealias = 0;
+	do{
+		if (Z_TYPE_P(classmap) == IS_ARRAY){
+			zval **tmp;
+			if (zend_hash_find(Z_ARRVAL_P(classmap), classname, classname_len + 1, (void **)&tmp) == SUCCESS){
+				classpath = Z_STRVAL_PP(tmp);
+				if (*classpath == '@'){
+					classpath = yii_get_alias(Z_STRVAL_PP(tmp), Z_STRLEN_PP(tmp), 0 TSRMLS_CC);
+					usealias = 1;
+				}
+				break;
+			}
+		}
+		if (strchr(classname, '\\')){
+			char *tmp_classpath;
+			int tmp_classpath_len = spprintf(&tmp_classpath, 0, "@%s.php", classname);
+			while (*tmp_classpath != '\0'){
+				if (*tmp_classpath == '\\'){
+					*tmp_classpath = '/';
+				}
+				tmp_classpath++;
+			}
+			tmp_classpath -= tmp_classpath_len;//reset pointer 
+
+			classpath = yii_get_alias(tmp_classpath, tmp_classpath_len, 0 TSRMLS_CC);
+			efree(tmp_classpath);
+			usealias = 1;
+		}
+	} while (0);
+
+	RETVAL_FALSE;
+	if (classpath){
+		zval is_file;
+		php_stat(classpath, strlen(classpath), FS_IS_FILE, &is_file TSRMLS_CC);
+		if (zend_is_true(&is_file)){
+			yii_include(classpath, NULL TSRMLS_CC);
+			RETVAL_TRUE;
+		}
+		if (usealias){
+			efree(classpath);
+		}
+	}
+	
+}
+
+/*}}}*/
 
 
 zend_function_entry yii_baseyii_methods[] = {
@@ -401,6 +497,7 @@ zend_function_entry yii_baseyii_methods[] = {
 	ZEND_ME(Yii_BaseYii, getAlias, arginfo_getalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(Yii_BaseYii, getRootAlias, arginfo_getrootalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(Yii_BaseYii, setAlias, arginfo_setalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(Yii_BaseYii, autoload, arginfo_autoload,ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 

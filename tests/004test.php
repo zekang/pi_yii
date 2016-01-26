@@ -1,7 +1,8 @@
 <?php
 //sleep(20);
 //error_reporting(0);
-//$a = "1";
+require "include.php";
+$a = "1";
 echo $a;
 function handler()
 {
@@ -21,3 +22,12 @@ show();
 echo "END";
 	echo PHP_EOL;
 show();
+class A
+{
+	function run()
+	{
+		usleep(500000);
+	}
+}
+$class = new A();
+$class->run();

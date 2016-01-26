@@ -84,6 +84,7 @@
     <ClCompile Include="base\unknown_property_exception.c" />
     <ClCompile Include="base\user_exception.c" />
     <ClCompile Include="lib\common.c" />
+    <ClCompile Include="lib\profiler.c" />
     <ClCompile Include="my_yii.c" />
     <ClCompile Include="yii.c" />
   </ItemGroup>
@@ -98,6 +99,7 @@
     <ClInclude Include="base\unknown_property_exception.h" />
     <ClInclude Include="base\user_exception.h" />
     <ClInclude Include="lib\common.h" />
+    <ClInclude Include="lib\profiler.h" />
     <ClInclude Include="php_my_yii.h" />
     <ClInclude Include="yii.h" />
   </ItemGroup>

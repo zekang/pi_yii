@@ -27,6 +27,7 @@
 #include "ext/standard/info.h"
 #include "php_my_yii.h"
 #include "lib/common.h"
+#include "lib/profiler.h"
 #include "base\exception.h"
 #include "base\invalid_call_exception.h"
 #include "base\invalid_param_exception.h"
@@ -38,7 +39,6 @@
 #include "yii.h"
 #include "base/object.h"
 #include "ext/standard/php_var.h"
-#include "ext/date/php_date.h"
 
 
 
@@ -121,7 +121,7 @@ PHP_MINIT_FUNCTION(my_yii)
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_UNKNOWN_PROPERTY_EXCEPTION)]	= yii_base_unknown_propery_exception_ce;
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_INVALID_PARAM_EXCEPTION)]		= yii_base_invalid_param_exception_ce;
 	if (YII_G(track_error)){
-		yii_init_error_hooks(TSRMLS_C);
+	//	yii_init_error_hooks(TSRMLS_C);
 	}
 	return SUCCESS;
 }
@@ -134,7 +134,7 @@ PHP_MSHUTDOWN_FUNCTION(my_yii)
 	/* uncomment this line if you have INI entries
 	*/
 	if (YII_G(track_error)){
-		yii_recovery_error_hooks(TSRMLS_C);
+	//	yii_recovery_error_hooks(TSRMLS_C);
 	}
 	UNREGISTER_INI_ENTRIES();
 	
@@ -148,6 +148,7 @@ PHP_MSHUTDOWN_FUNCTION(my_yii)
 PHP_RINIT_FUNCTION(my_yii)
 {
 	YII_G(yii_path) = NULL;
+//	yii_profile_init(TSRMLS_C);
 	return SUCCESS;
 }
 /* }}} */
@@ -160,6 +161,7 @@ PHP_RSHUTDOWN_FUNCTION(my_yii)
 	if (YII_G(yii_path)){
 		efree(YII_G(yii_path));
 	}
+//	yii_profile_destory(TSRMLS_C);
 	return SUCCESS;
 }
 /* }}} */
