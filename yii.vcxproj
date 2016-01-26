@@ -75,6 +75,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="baseyii.c" />
+    <ClCompile Include="base\component.c" />
     <ClCompile Include="base\exception.c" />
     <ClCompile Include="base\invalid_call_exception.c" />
     <ClCompile Include="base\invalid_config_exception.c" />
@@ -90,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="baseyii.h" />
+    <ClInclude Include="base\component.h" />
     <ClInclude Include="base\exception.h" />
     <ClInclude Include="base\invalid_call_exception.h" />
     <ClInclude Include="base\invalid_config_exception.h" />

@@ -38,6 +38,7 @@
 #include "baseyii.h"
 #include "yii.h"
 #include "base/object.h"
+#include "base/component.h"
 #include "ext/standard/php_var.h"
 
 
@@ -112,6 +113,7 @@ PHP_MINIT_FUNCTION(my_yii)
 	EXT_STARTUP(yii_base_unknown_method_exception);
 	EXT_STARTUP(yii_base_user_exception);
 	EXT_STARTUP(yii_base_invalid_config_exception);
+	EXT_STARTUP(yii_base_component);
 
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_EXCEPTION)]					= yii_base_exception_ce;
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_USER_EXCEPTION)]				= yii_base_user_exception_ce;
