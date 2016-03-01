@@ -227,6 +227,7 @@ zend_op *get_opcode(zend_op_array *op_array, uint offset)
 
 ZEND_FUNCTION(yii_test)
 {
+	/*
 	char *name;
 	uint name_len;
 	zend_function  *zf;
@@ -260,8 +261,18 @@ ZEND_FUNCTION(yii_test)
 		}
 		
 	}
-	zval *val=NULL;
-	
+	*/
+	HashTable *auto_globals = CG(auto_globals);
+	if (auto_globals){
+		zend_hash_internal_pointer_reset(auto_globals);
+		while (zend_hash_has_more_elements(auto_globals) == SUCCESS){
+			zend_auto_global *tmp;
+			if (zend_hash_get_current_data(auto_globals, &tmp) == SUCCESS){
+				php_printf("%s\n", tmp->name);
+			}
+			zend_hash_move_forward(auto_globals);
+		}
+	}
 	/*
 	HashTable *call_symbol_table = NULL;
 	if (EG(active_symbol_table)){
@@ -270,11 +281,13 @@ ZEND_FUNCTION(yii_test)
 	ALLOC_HASHTABLE(EG(active_symbol_table));
 	zend_hash_init(EG(active_symbol_table), 8, NULL, ZVAL_PTR_DTOR, 0);
 	*/
+	/*
+	zval *val=NULL;
 	yii_include("index.php", NULL TSRMLS_CC);
 	if (val){
 		php_var_dump(&val, 1 TSRMLS_CC);
 	}
-	
+	*/
 	/*
 	if (call_symbol_table){
 		zend_hash_destroy(EG(active_symbol_table));

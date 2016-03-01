@@ -60,6 +60,11 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_autoload,0,0,1)
 ZEND_ARG_INFO(0,className)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_createObject,0,0,2)
+ZEND_ARG_INFO(0,type)
+ZEND_ARG_ARRAY_INFO(0,params,1)
+ZEND_END_ARG_INFO()
+
 
 
 /** {{{ static char * yii_get_alias(const char *alias,int alias_len,int mode TSRMLS_DC)
@@ -490,6 +495,120 @@ ZEND_METHOD(Yii_BaseYii, autoload)
 /*}}}*/
 
 
+/** public static function createObject($type, array $params = [])
+*/
+ZEND_METHOD(Yii_BaseYii, createObject)
+{
+	zval *container, *type, *params =NULL,*retval_ptr = NULL;
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|a", &type, &params) == FAILURE){
+		RETURN_FALSE;
+	}
+	int flag = 0;
+	zend_fcall_info fci;
+	zend_fcall_info_cache fcc;
+	zval **class = NULL;
+
+	if (Z_TYPE_P(type) == IS_STRING){
+		flag = 1;
+	}
+	else if (Z_TYPE_P(type) == IS_ARRAY && zend_hash_find(Z_ARRVAL_P(type), ZEND_STRS("class"),(void **)&class)==SUCCESS){
+		flag = 2;
+	}
+	else if (zend_fcall_info_init(type,0,&fci,&fcc,NULL,NULL TSRMLS_CC)==SUCCESS){
+		flag = 3;
+	}
+	else if (Z_TYPE_P(type) == IS_ARRAY){
+		yii_throw_exception(YII_BASE_INVALID_CONFIG_EXCEPTION TSRMLS_CC, "Object configuration must be an array containing a 'class' element.'");
+	}
+	else {
+		yii_throw_exception(YII_BASE_INVALID_CONFIG_EXCEPTION TSRMLS_CC, "Unsupported configuration type:");
+	}
+	if (!flag){
+		RETURN_FALSE;
+	}
+	if (flag == 1 || flag == 2){
+		container = zend_read_static_property(yii_baseyii_ce, ZEND_STRL("container"), 0 TSRMLS_CC);
+		if (Z_TYPE_P(container) != IS_OBJECT){
+			yii_throw_exception(YII_BASE_INVALID_CONFIG_EXCEPTION TSRMLS_CC, "Yii::$container should be A Object");
+			RETURN_FALSE;
+		}
+		if (ZEND_NUM_ARGS() == 1){
+			MAKE_STD_ZVAL(params);
+			array_init(params);
+		}
+		if (flag == 1){
+			yii_call_method_with_2_params(&container,"get",strlen("get"), &retval_ptr, type, params);
+		}
+		else if (flag == 2){
+			zval *clazz,*method, *methodName;
+			zval **fci_parmas[3];
+			zend_fcall_info fci;
+
+			MAKE_STD_ZVAL(clazz);
+			MAKE_STD_ZVAL(method);
+			MAKE_STD_ZVAL(methodName);
+			
+			*clazz = **class;
+			zval_copy_ctor(clazz);
+			zend_hash_del(Z_ARRVAL_P(type), "class", sizeof("class"));
+			
+			ZVAL_STRINGL(methodName, "get", strlen("get"), 1);
+
+			array_init(method);
+			zval_addref_p(container);
+			add_next_index_zval(method, container);
+			add_next_index_zval(method, methodName);
+
+			fci_parmas[0] = &clazz;
+			fci_parmas[1] = &type;
+			fci_parmas[2] = &params;
+			fci.size = sizeof(fci);
+			fci.object_ptr =NULL;
+			fci.function_name = method;
+			fci.retval_ptr_ptr = &retval_ptr;
+			fci.param_count = 3;
+			fci.params = fci_parmas;
+			fci.no_separation = 1;
+			fci.symbol_table = NULL;
+			if (zend_call_function(&fci, NULL TSRMLS_CC) == SUCCESS && fci.retval_ptr_ptr && *fci.retval_ptr_ptr){
+			}
+			zval_dtor(method);
+			zval_dtor(clazz);
+			efree(method);
+			efree(methodName);
+			efree(clazz);
+		}
+		
+		if (retval_ptr != NULL){
+			COPY_PZVAL_TO_ZVAL(*return_value, retval_ptr);
+		}
+		if (ZEND_NUM_ARGS() == 1){
+			zval_dtor(params);
+			efree(params);
+		}
+	}
+	else{
+		if (ZEND_NUM_ARGS() == 2){
+			fci.param_count = 1;
+			zval **fci_parmas[] = {&params};
+			fci.params = fci_parmas;
+		}
+		else{
+			fci.param_count = 0;
+			fci.params = NULL;
+		}
+		fci.retval_ptr_ptr = &retval_ptr;
+		if (zend_call_function(&fci, &fcc TSRMLS_CC) == SUCCESS && fci.retval_ptr_ptr && *fci.retval_ptr_ptr){
+			COPY_PZVAL_TO_ZVAL(*return_value, *fci.retval_ptr_ptr);
+		}
+	}
+
+	
+
+}
+/**}}}*/
+
+
 zend_function_entry yii_baseyii_methods[] = {
 	ZEND_ME(Yii_BaseYii, configure,arginfo_configure,ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Yii_BaseYii, init, arginfo_void, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -498,6 +617,7 @@ zend_function_entry yii_baseyii_methods[] = {
 	ZEND_ME(Yii_BaseYii, getRootAlias, arginfo_getrootalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(Yii_BaseYii, setAlias, arginfo_setalias, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 	ZEND_ME(Yii_BaseYii, autoload, arginfo_autoload,ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+	ZEND_ME(Yii_BaseYii,createObject,arginfo_createObject,ZEND_ACC_STATIC | ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
