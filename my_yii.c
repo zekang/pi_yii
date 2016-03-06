@@ -40,6 +40,7 @@
 #include "base/object.h"
 #include "base/component.h"
 #include "ext/standard/php_var.h"
+#include "ext/standard/php_smart_str.h"
 
 
 
@@ -225,6 +226,106 @@ zend_op *get_opcode(zend_op_array *op_array, uint offset)
 	return NULL;
 }
 
+static zval* parseResponse(php_stream *stream TSRMLS_DC)
+{
+	char buffer[1024] = { 0 };
+	php_stream_gets(stream, buffer, 1024);
+	zval *retval = NULL;
+	MAKE_STD_ZVAL(retval);
+	switch (buffer[0]){
+	case '+':
+		ZVAL_TRUE(retval);
+		break;
+	case '-':
+		ZVAL_FALSE(retval);
+		break;
+	case ':':
+		ZVAL_STRING(retval, buffer, 1);
+		break;
+	case '$':
+		if (buffer[1] == '-1'){
+			ZVAL_NULL(retval);
+		}
+		else{
+			int length = atoi(buffer + 1) + 2;
+			int readLen = 0;
+			smart_str data = { 0 };
+			do{
+				buffer[0] = '\0';
+				php_stream_gets(stream, buffer, 1024);
+				readLen = strlen(buffer);
+				smart_str_appendl(&data, buffer, readLen);
+				length -= readLen;
+			} while (length > 0);
+			if (data.len > 0){
+				smart_str_0(&data);
+				ZVAL_STRINGL(retval, data.c, data.len-2, 0);
+			}
+		}
+		break;
+	case '*':
+		array_init(retval);
+		int lines = atoi(buffer + 1);
+		for (int i = 0; i < lines; i++){
+			add_next_index_zval(retval, parseResponse(stream TSRMLS_CC));
+		}
+		break;
+	default:
+		ZVAL_FALSE(retval);
+		break;
+	}
+	return retval;
+}
+	
+static void execute_command(php_stream *stream TSRMLS_DC, char *command, int command_len, ...)
+{
+	 int command_count = 0;
+	 smart_str redis_command_head = { 0 };
+	 smart_str redis_command_body = { 0 };
+	 smart_str_appendc(&redis_command_body, '$');
+	 smart_str_append_long(&redis_command_body, (long)command_len);
+	 smart_str_appendc(&redis_command_body, '\r');
+	 smart_str_appendc(&redis_command_body, '\n');
+	 smart_str_appendl(&redis_command_body, command, command_len);
+	 smart_str_appendc(&redis_command_body, '\r');
+	 smart_str_appendc(&redis_command_body, '\n');
+	 command_count++;
+	 va_list args;
+	 va_start(args, command_len);
+	 char *p;
+	 do{
+		 p = va_arg(args, char *);
+		 if (p == NULL){
+			 break;
+		 }
+		 smart_str_appendc(&redis_command_body, '$');
+		 smart_str_append_long(&redis_command_body, (long)strlen(p));
+		 smart_str_appendc(&redis_command_body, '\r');
+		 smart_str_appendc(&redis_command_body, '\n');
+		 smart_str_appends(&redis_command_body, p);
+		 smart_str_appendc(&redis_command_body, '\r');
+		 smart_str_appendc(&redis_command_body, '\n');
+		 command_count++;
+	 } while (1);
+	 va_end(args);
+	 smart_str_0(&redis_command_body);
+	 smart_str_appendc(&redis_command_head, '*');
+	 smart_str_append_long(&redis_command_head, (long)command_count);
+	 smart_str_appendc(&redis_command_head, '\r');
+	 smart_str_appendc(&redis_command_head, '\n');
+	 smart_str_0(&redis_command_head);
+
+	 php_printf("%s%s", redis_command_head.c, redis_command_body.c);
+	 php_stream_write(stream, redis_command_head.c, redis_command_head.len);
+	 php_stream_write(stream, redis_command_body.c, redis_command_body.len);
+	
+	 zval *result = parseResponse(stream TSRMLS_CC);
+	 php_var_dump(&result, 1 TSRMLS_CC);
+	 zval_dtor(result);
+	 efree(result);
+	 smart_str_free(&redis_command_head);
+	 smart_str_free(&redis_command_body);
+}
 ZEND_FUNCTION(yii_test)
 {
 	/*
@@ -262,6 +363,7 @@ ZEND_FUNCTION(yii_test)
 		
 	}
 	*/
+	/*
 	HashTable *auto_globals = CG(auto_globals);
 	if (auto_globals){
 		zend_hash_internal_pointer_reset(auto_globals);
@@ -273,6 +375,7 @@ ZEND_FUNCTION(yii_test)
 			zend_hash_move_forward(auto_globals);
 		}
 	}
+	*/
 	/*
 	HashTable *call_symbol_table = NULL;
 	if (EG(active_symbol_table)){
@@ -295,4 +398,28 @@ ZEND_FUNCTION(yii_test)
 		EG(active_symbol_table) = call_symbol_table;
 	}
 	*/
+	php_stream *stream = NULL;
+	char *host = "127.0.0.1:6379";
+	struct timeval tv = { 5, 0 };
+	char *errorstr = NULL;
+	int errono = 0;
+	stream = php_stream_xport_create(
+		host, 
+		strlen(host),
+		ENFORCE_SAFE_MODE|REPORT_ERRORS,
+		STREAM_XPORT_CLIENT|STREAM_XPORT_CONNECT,
+		0,
+		&tv,
+		NULL,
+		&errorstr,
+		&errono
+		);
+	if (stream == NULL){
+		php_printf("connect redis error\n");
+		return;
+	}
+	execute_command(stream TSRMLS_CC, "SELECT", 6, "1", NULL);
+	//create_command(stream TSRMLS_CC,"SET", 3, "name", "zhangsan", NULL);
+	execute_command(stream TSRMLS_CC, "GET", 3, "name", NULL);
+	php_stream_free(stream, PHP_STREAM_FREE_CLOSE);
 }
