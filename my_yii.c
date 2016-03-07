@@ -243,7 +243,7 @@ static zval* parseResponse(php_stream *stream TSRMLS_DC)
 		ZVAL_STRING(retval, buffer, 1);
 		break;
 	case '$':
-		if (buffer[1] == '-1'){
+		if (buffer[1] == '-' && buffer[2] == '1'){
 			ZVAL_NULL(retval);
 		}
 		else{
@@ -420,6 +420,7 @@ ZEND_FUNCTION(yii_test)
 	}
 	execute_command(stream TSRMLS_CC, "SELECT", 6, "1", NULL);
 	//create_command(stream TSRMLS_CC,"SET", 3, "name", "zhangsan", NULL);
-	execute_command(stream TSRMLS_CC, "GET", 3, "name", NULL);
+	//execute_command(stream TSRMLS_CC, "GET", 3, "name", NULL);
+	execute_command(stream TSRMLS_CC, "LRANGE", 6,"name", "0", "-1", NULL);
 	php_stream_free(stream, PHP_STREAM_FREE_CLOSE);
 }
