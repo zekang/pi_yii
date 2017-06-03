@@ -41,6 +41,7 @@
 #include "base/component.h"
 #include "ext/standard/php_var.h"
 #include "ext/standard/php_smart_str.h"
+#include "di\container.h"
 
 
 
@@ -92,7 +93,7 @@ static void php_my_yii_init_globals(zend_my_yii_globals *my_yii_globals)
 */
 PHP_GINIT_FUNCTION(my_yii)
 {
-	MY_YII_G(yii_path) = NULL;
+	my_yii_globals->yii_path = NULL;
 }
 /* }}} */
 
@@ -115,6 +116,7 @@ PHP_MINIT_FUNCTION(my_yii)
 	EXT_STARTUP(yii_base_user_exception);
 	EXT_STARTUP(yii_base_invalid_config_exception);
 	EXT_STARTUP(yii_base_component);
+	EXT_STARTUP(yii_di_container);
 
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_EXCEPTION)]					= yii_base_exception_ce;
 	yii_buildin_exceptions[YII_EXCEPTION_OFFSET(YII_BASE_USER_EXCEPTION)]				= yii_base_user_exception_ce;

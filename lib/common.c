@@ -299,4 +299,3 @@ zend_bool yii_include(char *path, zval **return_value TSRMLS_DC)
 	return SUCCESS;
 }
 /* }}} */
-
